@@ -21,6 +21,11 @@ def collect_points():
 
         if label not in data:
             data[label] = []
+
+        if point in data[label]:
+            print(f"Ошибка: точка {point} уже есть в классе '{label}'. Введите другую точку.")
+            continue
+
         data[label].append(point)
 
         if len(data) >= 2:
