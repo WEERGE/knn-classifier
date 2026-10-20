@@ -1,3 +1,4 @@
+import json
 import math
 
 
@@ -84,33 +85,50 @@ def predict(data, point, k):
     return candidates[0]
 
 
+def save_data(data, path):
+    plain = {label: [list(p) for p in points] for label, points in data.items()}
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(plain, f, ensure_ascii=False)
+
+
+def load_data(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+    return {label: [tuple(p) for p in points] for label, points in raw.items()}
+
+
+DATA_FILE = "data.json"
+
+
 def main():
-    data = collect_points()
+    data = load_data(DATA_FILE)
 
-    total = sum(len(points) for points in data.values())
-    labels = set(data.keys())
-    print(f"\nВведено {total} точек, метки классов: {', '.join(labels)}")
+    if data is not None:
+        total = sum(len(p) for p in data.values())
+        answer = input(f"Найдена сохранённая выборка ({total} точек). "
+                       f"Использовать? (y/n): ")
+        if answer.strip().lower() != "y":
+            data = None
 
-    print("\nВведите координаты точки неизвестного класса.")
-    point = read_point("неизвестной точки")
+    if data is None:
+        data = collect_points()
+        save_data(data, DATA_FILE)
 
+    total = sum(len(p) for p in data.values())
+    print(f"Введено {total} точек, метки классов: "
+          f"{', '.join(sorted(set(data)))}")
+
+    unknown = read_point("Введите координаты точки неизвестного класса.")
     k = read_k(total)
 
-    nearest = neighbours(data, point, k)
-
-    print(f"\nБлижайшие соседи точки ({point[0]:.1f}, {point[1]:.1f}):")
-    for dist_sq, label, p in nearest:
+    print(f"Ближайшие соседи точки {unknown}:")
+    for dist_sq, label, p in neighbours(data, unknown, k):
         print(f"({p[0]:.1f}, {p[1]:.1f})  расстояние {math.sqrt(dist_sq):.2f}  метка {label}")
 
-    predicted = predict(data, point, k)
-
-    votes = {}
-    for _, label, _ in nearest:
-        votes[label] = votes.get(label, 0) + 1
-
-    votes_str = ", ".join(f"{label} – {count}" for label, count in votes.items())
-    print(f"\nГолоса: {votes_str}")
-    print(f"Предсказанная метка класса: {predicted}")
+    print("Предсказанная метка класса:", predict(data, unknown, k))
 
 
 if __name__ == '__main__':
